@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 
 BASE_URL = "https://ticketnew.com"
 
-# ---------------- PATH SETUP ----------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 POSTER_DIR = os.path.join(STATIC_DIR, "posters")
@@ -17,7 +16,6 @@ os.makedirs(POSTER_DIR, exist_ok=True)
 JSON_FILE = os.path.join(BASE_DIR, "tamilnadu_ticketnew.json")
 TODAY = datetime.now().strftime("%Y-%m-%d")
 
-# ---------------- CITIES ----------------
 TAMILNADU_CITIES = [
     "chennai","coimbatore","madurai","salem","tirupur","trichy","vellore",
     "tirunelveli","erode","rajapalayam","kanchipuram","villupuram","karur",
@@ -30,7 +28,6 @@ TAMILNADU_CITIES = [
     "pallipalayam","sankagiri"
 ]
 
-# ---------------- HELPERS ----------------
 def normalize_title(title: str) -> str:
     if not title:
         return ""
@@ -68,8 +65,6 @@ async def download_poster(page, poster_url, movie_title):
 async def get_movies(page, city):
     url = f"{BASE_URL}/movies/{city}"
     await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-    
-    # Scroll to load all movies
     prev_count = 0
     for _ in range(20):
         await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
@@ -86,9 +81,7 @@ async def get_movies(page, city):
         title_tag = card.find("h5")
         if not title_tag:
             continue
-
-        # Skip upcoming movies if "Coming Soon" badge exists
-        coming_soon = card.select_one("span.coming-soon")  # may need class adjustment
+        coming_soon = card.select_one("span.coming-soon")  
         if coming_soon:
             continue
 
@@ -99,77 +92,206 @@ async def get_movies(page, city):
     return list(movies.values())
 
 # ---------------- GET MOVIE DETAILS & SHOWTIMES ----------------
+# async def get_movie_details(page, movie_url):
+#     theatres_dict = {}
+#     poster_url = certificate = duration = None
+    
+#     await page.goto(movie_url, wait_until="domcontentloaded", timeout=60000)
+#     await page.wait_for_timeout(1500)  # wait for JS
+    
+#     # Grab poster & meta info
+#     if not poster_url:
+#         img = await page.query_selector("div[class*='MovieDetailWidget_textImgCon'] img")
+#         if img:
+#             poster_url = urljoin(BASE_URL, await img.get_attribute("src"))
+#         meta = await page.query_selector("div[class*='MovieDetailWidget_subHeading']")
+#         if meta:
+#             txt = await meta.inner_text()
+#             if m := re.search(r"\d+\s*hr.*?\d*\s*min?", txt, re.I):
+#                 duration = m.group()
+#             if m := re.search(r"\b(U|UA|UA13\+|A)\b", txt):
+#                 certificate = m.group()
+    
+#     # Get date buttons (today + next 2 days)
+#     dates_container = await page.query_selector("div.DatesMobileV2_cinemaDatesDiv__d8LsL")
+#     if not dates_container:
+#         return None
+    
+#     date_buttons = await dates_container.query_selector_all("div.DatesMobileV2_date__A7QWu")
+#     for delta in range(3):
+#         if delta >= len(date_buttons):
+#             continue
+#         btn = date_buttons[delta]
+#         show_date = (datetime.now() + timedelta(days=delta)).strftime("%Y%m%d")
+#         await btn.click()
+#         await page.wait_for_timeout(1500)  # wait JS to render showtimes
+        
+#         # Parse theatres for this date
+#         soup = BeautifulSoup(await page.content(), "lxml")
+#         for block in soup.select("li[class*='MovieSessionsListing_movieSessions']"):
+#             tname = block.select_one("div[class*='MovieSessionsListing_titleFlex'] a")
+#             if not tname:
+#                 continue
+#             theatre_name = tname.get_text(strip=True)
+#             shows = []
+#             for t in block.select("div.greenCol"):
+#                 time = t.find(string=True, recursive=False)
+#                 fmt = t.find("span")
+#                 if time:
+#                     shows.append({
+#                         "time": time.strip(),
+#                         "format": fmt.get_text(strip=True) if fmt else "2D"
+#                     })
+#             if shows:
+#                 if theatre_name not in theatres_dict:
+#                     theatres_dict[theatre_name] = {}
+#                 if show_date not in theatres_dict[theatre_name]:
+#                     theatres_dict[theatre_name][show_date] = []
+#                 existing = theatres_dict[theatre_name][show_date]
+#                 for s in shows:
+#                     if s not in existing:
+#                         existing.append(s)
+    
+#     # Skip if no showtimes
+#     if not theatres_dict:
+#         return None
+
+#     theatres = [{"name": k, "dates": v} for k, v in theatres_dict.items()]
+#     return {"poster_url": poster_url, "certificate": certificate, "duration": duration, "theatres": theatres}
+
 async def get_movie_details(page, movie_url):
     theatres_dict = {}
     poster_url = certificate = duration = None
-    
+
     await page.goto(movie_url, wait_until="domcontentloaded", timeout=60000)
-    await page.wait_for_timeout(1500)  # wait for JS
-    
-    # Grab poster & meta info
-    if not poster_url:
-        img = await page.query_selector("div[class*='MovieDetailWidget_textImgCon'] img")
-        if img:
-            poster_url = urljoin(BASE_URL, await img.get_attribute("src"))
-        meta = await page.query_selector("div[class*='MovieDetailWidget_subHeading']")
-        if meta:
-            txt = await meta.inner_text()
-            if m := re.search(r"\d+\s*hr.*?\d*\s*min?", txt, re.I):
-                duration = m.group()
-            if m := re.search(r"\b(U|UA|UA13\+|A)\b", txt):
-                certificate = m.group()
-    
-    # Get date buttons (today + next 2 days)
-    dates_container = await page.query_selector("div.DatesMobileV2_cinemaDatesDiv__d8LsL")
+    await page.wait_for_timeout(1500)
+
+    # ---------------- POSTER + META ----------------
+    img = await page.query_selector("div[class*='MovieDetailWidget_textImgCon'] img")
+    if img:
+        src = await img.get_attribute("src")
+        if src:
+            poster_url = urljoin(BASE_URL, src)
+
+    meta = await page.query_selector("div[class*='MovieDetailWidget_subHeading']")
+    if meta:
+        txt = await meta.inner_text()
+        if m := re.search(r"\d+\s*hr.*?\d*\s*min?", txt, re.I):
+            duration = m.group()
+        if m := re.search(r"\b(U|UA|UA13\+|A)\b", txt):
+            certificate = m.group()
+
+    bottom_sheet = await page.query_selector("div[class*='BottomSheet_container']")
+    if bottom_sheet:
+        close_btn = await page.query_selector("div[class*='BottomSheet_container'] button")
+        if close_btn:
+            try:
+                await close_btn.click()
+                await page.wait_for_timeout(500)
+            except:
+                pass
+
+    dates_container = await page.query_selector(
+        "div.DatesMobileV2_cinemaDatesDiv__d8LsL"
+    )
     if not dates_container:
         return None
-    
-    date_buttons = await dates_container.query_selector_all("div.DatesMobileV2_date__A7QWu")
-    for delta in range(3):
-        if delta >= len(date_buttons):
-            continue
-        btn = date_buttons[delta]
-        show_date = (datetime.now() + timedelta(days=delta)).strftime("%Y%m%d")
-        await btn.click()
-        await page.wait_for_timeout(1500)  # wait JS to render showtimes
-        
-        # Parse theatres for this date
+
+    date_buttons = await dates_container.query_selector_all(
+        "div.DatesMobileV2_date__A7QWu"
+    )
+
+    for btn in date_buttons[:3]:
+
+        show_date = await btn.get_attribute("data-date")
+
+        if not show_date:
+            show_date = await btn.get_attribute("data-value")
+
+        if not show_date:
+            full_text = (await btn.inner_text()).strip()
+
+            if "Today" in full_text:
+                show_date = datetime.now().strftime("%Y%m%d")
+            elif "Tomorrow" in full_text:
+                show_date = (datetime.now() + timedelta(days=1)).strftime("%Y%m%d")
+            else:
+                day_match = re.search(r"\b(\d{1,2})\b", full_text)
+                if not day_match:
+                    continue
+
+                day = int(day_match.group(1))
+                today = datetime.now()
+
+                month = today.month
+                year = today.year
+
+                if day < today.day:
+                    month += 1
+                    if month > 12:
+                        month = 1
+                        year += 1
+
+                try:
+                    show_date = datetime(year, month, day).strftime("%Y%m%d")
+                except:
+                    continue
+        await btn.click(force=True)
+        await page.wait_for_timeout(1500)
+
+
         soup = BeautifulSoup(await page.content(), "lxml")
+
         for block in soup.select("li[class*='MovieSessionsListing_movieSessions']"):
-            tname = block.select_one("div[class*='MovieSessionsListing_titleFlex'] a")
+            tname = block.select_one(
+                "div[class*='MovieSessionsListing_titleFlex'] a"
+            )
             if not tname:
                 continue
+
             theatre_name = tname.get_text(strip=True)
             shows = []
+
             for t in block.select("div.greenCol"):
                 time = t.find(string=True, recursive=False)
                 fmt = t.find("span")
+
                 if time:
                     shows.append({
                         "time": time.strip(),
                         "format": fmt.get_text(strip=True) if fmt else "2D"
                     })
-            if shows:
-                if theatre_name not in theatres_dict:
-                    theatres_dict[theatre_name] = {}
-                if show_date not in theatres_dict[theatre_name]:
-                    theatres_dict[theatre_name][show_date] = []
-                existing = theatres_dict[theatre_name][show_date]
-                for s in shows:
-                    if s not in existing:
-                        existing.append(s)
-    
-    # Skip if no showtimes
+            if not shows:
+                continue
+
+            if theatre_name not in theatres_dict:
+                theatres_dict[theatre_name] = {}
+
+            if show_date not in theatres_dict[theatre_name]:
+                theatres_dict[theatre_name][show_date] = []
+
+            existing = theatres_dict[theatre_name][show_date]
+
+            for s in shows:
+                if s not in existing:
+                    existing.append(s)
+
     if not theatres_dict:
         return None
 
     theatres = [{"name": k, "dates": v} for k, v in theatres_dict.items()]
-    return {"poster_url": poster_url, "certificate": certificate, "duration": duration, "theatres": theatres}
+
+    return {
+        "poster_url": poster_url,
+        "certificate": certificate,
+        "duration": duration,
+        "theatres": theatres
+    }
 
 # ---------------- MAIN ----------------
 async def run_all_cities():
     final_data = {"date": TODAY, "cities": {}}
-    save_json(final_data)  # fresh file
+    save_json(final_data) 
     
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
