@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MovieMate</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Stalinist+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Style+Script&display=swap" rel="stylesheet">
+
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+
+<header class="top-bar">
+  <div class="top-container">
+    <div class="site-title">MovieMate</div>
+
+    <div class="city-display" id="cityDisplay" onclick="openCitySearch()">
+      <span>
+        {% if request.args.get('city') %}
+          {{ request.args.get('city') | title }}
+        {% else %}
+          City
+        {% endif %}
+      </span>
+      <i class="bi bi-chevron-down"></i>
+    </div>
+
+    <form action="{{ url_for('movies') }}" method="get"
+          class="city-search" id="citySearch">
+      <input list="cities" name="city" placeholder="Search city" required>
+    </form>
+
+  </div>
+</header>
+
+{% block content %}{% endblock %}
+ 
+<div class="city-popup-overlay" id="cityPopup">
+  <div class="city-popup">
+    <input
+  type="text"
+  id="cityInput"
+  placeholder="Search for your city"
+  autocomplete="off"
+  >
+  <div class="autocomplete-box" id="autocompleteBox"></div>
+  </div>
+</div>
+
+
+<script>
+function openCitySearch() {
+  document.getElementById("cityPopup").style.display = "flex";
+}
+
+function submitCity(city) {
+  if (!city) return;
+  window.location.href = "{{ url_for('movies') }}?city=" + city.toLowerCase();
+}
+
+document.getElementById("cityPopup").addEventListener("click", function (e) {
+  if (e.target === this) {
+    this.style.display = "none";
+  }
+});
+
+const cityInput = document.getElementById("cityInput");
+const box = document.getElementById("autocompleteBox");
+
+cityInput.addEventListener("input", async () => {
+  const q = cityInput.value.trim();
+  box.innerHTML = "";
+  if (q.length < 2) return;
+
+  try {
+    const res = await fetch(`/api/city-autocomplete?q=${encodeURIComponent(q)}`);
+    const cities = await res.json();
+
+    cities.forEach(city => {
+      const div = document.createElement("div");
+      div.textContent = city;
+      div.onclick = () => submitCity(city);
+      box.appendChild(div);
+    });
+  } catch (e) {
+    console.error(e);
+  }
+});
+
+cityInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") submitCity(cityInput.value);
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+.movie-link {
+    display: block;
+}
+
+.movie-card {
+    background:white;
+    width: 180px;
+    border-radius: 14px;
+    overflow: hidden;
+    transition: transform 0.25s ease;
+}
+
+.movie-card:hover {
+    transform: translateY(-4px);
+}
+
+.movie-card img {
+    width: 100%;
+    height: 250px;
+    object-fit:fill;
+}
+
+.card-content {
+    padding:5px;
+    text-align: center;
+    background:white;  
+}
+
+.card-content h3 {
+    font-size: 18px;
+    margin: 6px 0;
+    color:black;
+    font-weight: 250px;
+}
+
+.card-content h4 {
+font-size: 15px;
+color: black;
+font-weight: 100px;
+
+}
+
+.grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+}
+
+.city-title {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #000;
+    font-size: 25px;
+}
+.city-title span {
+    color:black;
+}
+
+.movie-link * {
+    text-decoration: none;
+    }
+
+    .movie-link,
+    .movie-link:link,
+    .movie-link:visited,
+    .movie-link:hover,
+    .movie-link:active {
+        text-decoration: none;
+        color: inherit;
+}
+
+
+@media (max-width: 425px)  {
+
+    .city-title {
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 15px;
+        color: #000;
+        font-size: 18px;
+    }
+    .city-title span {
+      color:black;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        padding: 5px;
+        justify-content: center; 
+    }
+    .movie-card {
+        width:100%;
+        background:white;
+        border-radius: 10px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.25s ease;
+        text-decoration: none;
+    }
+
+    .movie-card:hover {
+        transform: translateY(-4px);
+        text-decoration: none;
+    }
+
+    .movie-card img {
+        width: 100%;
+        height:200px; 
+        object-fit:fill;
+        flex-shrink: 0;
+    }
+
+    .card-content {
+        padding: 4px;
+        text-align: center;
+        background:white;
+        flex-grow: 1;   
+    }
+
+    .card-content h3 {
+        font-size: 15px;
+        font-weight: 190px;
+        margin: 4px 0;
+        color:black;
+        word-break: break-word;  
+    }
+
+    .card-content h4 {
+        font-size: 10px;
+        color: black;
+        font-weight: 100px;
+    }
+
+    .movie-link * {
+    text-decoration: none;
+    }
+
+    .movie-link,
+    .movie-link:link,
+    .movie-link:visited,
+    .movie-link:hover,
+    .movie-link:active {
+        text-decoration: none;
+        color: inherit;
+}
+}

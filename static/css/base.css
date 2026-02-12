@@ -1,0 +1,172 @@
+html, body {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    font-family: "Stalinist One", sans-serif;
+    background-color: whitesmoke;
+}
+
+.top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background-color: #e1e5f2;
+    padding: 12px 16px;
+}
+
+.top-container {
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-title {
+    font-family: "Stalinist One", sans-serif;
+    font-size: 26px;
+    font-weight: 300;
+    letter-spacing: 3px;
+    margin-left:80px;
+    color: black;
+}
+
+.city-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: black;
+}
+
+.city-display i {
+    font-size: 12px;
+}
+
+.city-search {
+    display: none;
+}
+
+.city-search input {
+    padding: 8px 14px;
+    border-radius: 20px;
+    width: 200px;
+    border: 1px solid black;
+    outline: none;
+    font-size: 14px;
+    color: black;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 24px;
+}
+
+.city-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.city-popup {
+  background: #fff;
+  width: 90%;
+  max-width: 600px;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.city-popup input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+.autocomplete-box {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.autocomplete-box div {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.autocomplete-box div:hover {
+  background: #f2f2f2;
+}
+
+@media (max-width: 425px) {
+
+    .site-title {
+        font-size: 20px;
+        font-weight: 200;
+        letter-spacing: 1px;
+        margin-left: 10px;
+    }
+
+    .city-display {
+        font-size: 12px;
+    }
+
+    .city-search input {
+        width: 50px;
+        padding: 6px 6px;
+        font-size: 10px;
+        border-radius: 20px;
+        border: 1px solid black;
+        outline: none;
+    }
+
+    .city-popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+  }
+
+  .city-popup {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px;
+    padding: 16px;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s ease-out;
+  }
+
+  .city-popup input {
+    font-size: 16px; 
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .autocomplete-box {
+    max-height: 50vh;
+    margin-top: 10px;
+    border-radius: 10px;
+  }
+
+  .autocomplete-box div {
+    padding: 14px;
+    font-size: 16px;
+  }
+}

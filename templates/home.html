@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<h2 class="section-title">Now Streaming Near You</h2>
+
+<div class="poster-wrapper" id="movieContainer" data-offset="{{ movies|length }}">
+
+  {% for m in movies %}
+    <div class="poster-card">
+      <img src="{{ url_for('static', filename=m.image) }}" alt="{{ m.title }}">
+      <p class="movie-title">{{ m.title }}</p>
+    </div>
+  {% endfor %}
+</div>
+
+<div id="loadTrigger"></div>
+
+<script>
+const container = document.getElementById("movieContainer");
+let offset = parseInt(container.dataset.offset, 10);
+const limit = 6;
+let loading = false;
+
+const trigger = document.getElementById("loadTrigger");
+
+const observer = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    loadMoreMovies();
+  }
+}, { root: null, rootMargin: "150px" });
+
+observer.observe(trigger);
+
+function loadMoreMovies() {
+  if (loading) return;
+  loading = true;
+
+  fetch(`/load_movies?offset=${offset}&limit=${limit}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.movies.length === 0) {
+        observer.disconnect();
+        return;
+      }
+
+      data.movies.forEach(m => {
+        const card = document.createElement("div");
+        card.className = "poster-card";
+        card.innerHTML = `
+          <img src="/static/${m.image}" alt="${m.title}" loading="lazy">
+          <p class="movie-title">${m.title}</p>
+        `;
+        container.appendChild(card);
+      });
+
+      offset += data.movies.length;
+      loading = false;
+    })
+    .catch(() => loading = false);
+}
+</script>
+
+
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/movies.css') }}">
+{% endblock %}
+
+{% block content %}
+
+{% if city %}
+    <h2 class="city-title">
+     Now Showing in <span>{{ city|title }}</span>
+    </h2>
+{% endif %}
+
+<div class="grid"
+     id="movieGrid"
+     data-city="{{ city }}"
+     data-offset="{{ movies|length }}">
+
+    {% for m in movies %}
+        <a href="/theatres?movie_id={{ m.movie_id }}&city={{ city }}" class="movie-link">
+            <div class="card movie-card">
+                <img src="{{ url_for('static', filename=m.image) }}" alt="{{ m.title }}">
+                <div class="card-content">
+                    <h3>{{ m.title }}</h3>
+                    <h4>
+                        {{ [
+                            m.duration,
+                            m.genres,
+                            m.certificate,
+                        ] | select | join(' | ') }}
+                    </h4>
+                </div>
+            </div>
+        </a>
+    {% endfor %}
+</div>
+
+<div id="loadTrigger"></div>
+
+
+<script>
+const grid = document.getElementById("movieGrid");
+const city = grid.dataset.city;
+let offset = parseInt(grid.dataset.offset, 10);
+const limit = 6;
+let loading = false;
+
+const trigger = document.getElementById("loadTrigger");
+
+const observer = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    loadMoreMovies();
+  }
+}, { rootMargin: "150px" });
+
+observer.observe(trigger);
+
+function loadMoreMovies() {
+  if (loading) return;
+  loading = true;
+
+  fetch(`/load_movies_by_city?city=${city}&offset=${offset}&limit=${limit}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.movies.length === 0) {
+        observer.disconnect();
+        return;
+      }
+
+      data.movies.forEach(m => {
+        const link = document.createElement("a");
+        link.href = `/theatres?movie_id=${m.movie_id}&city=${city}`;
+        link.className = "movie-link";
+
+        link.innerHTML = `
+          <div class="card movie-card">
+            <img src="/static/${m.image}" alt="${m.title}" loading="lazy">
+            <div class="card-content">
+              <h3>${m.title}</h3>
+              <h4>
+                ${[m.duration, m.genres, m.certificate, m.release_date]
+                  .filter(Boolean)
+                  .join(" | ")}
+              </h4>
+            </div>
+          </div>
+        `;
+
+        grid.appendChild(link);
+      });
+
+      offset += data.movies.length;
+      loading = false;
+    })
+    .catch(() => loading = false);
+}
+</script>
+
+{% endblock %}

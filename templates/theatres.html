@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theatres.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<div class="movie-header">
+    <div class="movie-poster">
+        <img src="{{ url_for('static', filename=movie.image.replace('static/', '')) }}"
+     alt="{{ movie_title }}">
+    </div>
+
+    <div class="movie-info">
+        <h2 class="movie-title">{{ movie_title }}</h2>
+        <h4 class="movie-details">
+            {{
+                [
+                    movie.duration,
+                    movie.genres,
+                    movie.certificate
+                ] | select | join(' | ')
+            }}
+        </h4>
+
+        <!-- <a href="javascript:history.back()" class="back-link">«</a> -->
+    </div>
+</div>
+
+
+<div class="dates">
+    <a href="javascript:history.back()" class="back-link">«</a>
+  {% for d in dates %}
+    <a href="{{ url_for('theatres',
+        movie_id=movie_id,
+        city=city,
+        date=d.raw) }}"
+       class="date-btn {{ 'active' if d.raw == selected_date else '' }}">
+
+        <span class="day">{{ d.day }}</span>
+        <span class="date">{{ d.date }}</span>
+        <span class="month">{{ d.month }}</span>
+
+    </a>
+  {% endfor %}
+</div>
+
+{% for theatre, shows in theatres.items() %}
+
+<div class="theatre-container">
+    <div class="theatre-card">
+        <h3>{{ theatre }}</h3>
+        <div class="time-container">
+            {% for s in shows %}
+               <span class="time">{{ s.time }} ({{ s.format }})</span>  
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
