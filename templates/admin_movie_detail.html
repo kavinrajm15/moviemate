@@ -1,0 +1,57 @@
+<h2>{{ movie.title }}</h2>
+
+<h3>Add Theatre</h3>
+<form method="POST" action="{{ url_for('add_theatre') }}">
+    <input type="hidden" name="city" value="{{ city }}">
+    <input type="text" name="name" placeholder="Theatre Name" required>
+    <button type="submit">Add Theatre</button>
+</form>
+
+<hr>
+
+<h3>Add Showtime</h3>
+<form method="POST" action="{{ url_for('add_showtime') }}">
+    <input type="hidden" name="movie_id" value="{{ movie.movie_id }}">
+
+    <select name="theatre_id" required>
+        {% for t in theatres %}
+            <option value="{{ t.theatre_id }}">{{ t.name }}</option>
+        {% endfor %}
+    </select>
+
+    <input type="text" name="show_time" placeholder="10:30 AM">
+    <input type="text" name="format" placeholder="2D/3D/IMAX">
+    <input type="date" name="date">
+
+    <button type="submit">Add Showtime</button>
+</form>
+
+<hr>
+
+<h3>Existing Showtimes</h3>
+<table border="1">
+<tr>
+    <th>Theatre</th>
+    <th>Time</th>
+    <th>Format</th>
+    <th>Date</th>
+    <th>Delete</th>
+</tr>
+
+{% for s in showtimes %}
+<tr>
+    <td>{{ s.name }}</td>
+    <td>{{ s.show_time }}</td>
+    <td>{{ s.format }}</td>
+    <td>{{ s.date }}</td>
+    <td>
+        <a href="{{ url_for('delete_showtime', id=s.showtime_id) }}">
+            Delete
+        </a>
+    </td>
+</tr>
+{% endfor %}
+</table>
+
+<br>
+<a href="{{ url_for('admin_city_movies', city=city) }}">Back to Movies</a>

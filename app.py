@@ -1,9 +1,27 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request,redirect, url_for, session
 import sqlite3
 from datetime import datetime, timedelta
 import requests
+#<
+import os
+from werkzeug.utils import secure_filename
+#>
 
 app = Flask(__name__)
+
+#<
+app.secret_key = "qwerty"
+UPLOAD_FOLDER = os.path.join("static", "posters")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+def allowed_file(filename):
+    return "." in filename and \
+           filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+#>
 
 DB = "movies.db"
 TODAY = datetime.now().strftime("%Y%m%d")
@@ -13,6 +31,12 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+#<
+def allowed_file(filename):
+    return "." in filename and \
+           filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+#>
 def normalize_date(d):
     if not d:
         return TODAY
@@ -193,8 +217,8 @@ def theatres():
         })
 
 
-    # showtimes for selected date
     rows = conn.execute("""
+    # showtimes for selected date
         SELECT
             t.name,
             s.show_time,
@@ -274,6 +298,200 @@ def city_autocomplete():
     except Exception as e:
         print("Autocomplete error:", e)
         return []
+    
+
+
+
+    # admin page
+
+
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        if username == "admin" and password == "4321":
+            session["admin"] = True
+            return redirect(url_for("admin_cities"))
+    return render_template("admin_login.html")
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("admin", None)
+    return redirect(url_for("admin_login"))
+
+@app.route("/admin/cities")
+def admin_cities():
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    conn = get_db()
+    cities = conn.execute("""
+        SELECT DISTINCT city FROM theatres
+        ORDER BY city
+    """).fetchall()
+    conn.close()
+
+    return render_template("admin_cities.html", cities=cities)
+
+@app.route("/admin/city/<city>")
+def admin_city_movies(city):
+    search = request.args.get("search", "").strip()
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    if search:
+        cur.execute("""
+            SELECT DISTINCT m.movie_id, m.title, m.image
+            FROM movies m
+            JOIN showtimes s ON m.movie_id = s.movie_id
+            JOIN theatres t ON s.theatre_id = t.theatre_id
+            WHERE t.city = ? AND m.title LIKE ?
+            ORDER BY m.title
+        """, (city.lower(), f"%{search}%"))
+    else:
+        cur.execute("""
+            SELECT DISTINCT m.movie_id, m.title, m.image
+            FROM movies m
+            JOIN showtimes s ON m.movie_id = s.movie_id
+            JOIN theatres t ON s.theatre_id = t.theatre_id
+            WHERE t.city = ?
+            ORDER BY m.title
+        """, (city.lower(),))
+
+    movies = cur.fetchall()
+    conn.close()
+
+    return render_template(
+        "admin_city_movies.html",
+        movies=movies,
+        city=city,
+        search=search
+    )
+
+@app.route("/admin/movie/<int:movie_id>")
+def admin_movie_detail(movie_id):
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    city = request.args.get("city")
+
+    conn = get_db()
+
+    movie = conn.execute(
+        "SELECT * FROM movies WHERE movie_id=?",
+        (movie_id,)
+    ).fetchone()
+
+    theatres = conn.execute("""
+        SELECT theatre_id, name
+        FROM theatres
+        WHERE city = ?
+        ORDER BY name
+    """, (city.lower(),)).fetchall()
+
+    showtimes = conn.execute("""
+        SELECT s.showtime_id, t.name, s.show_time, s.format, s.date, s.theatre_id
+        FROM showtimes s
+        JOIN theatres t ON s.theatre_id = t.theatre_id
+        WHERE s.movie_id=? AND t.city=?
+        ORDER BY s.date, t.name
+    """, (movie_id, city.lower())).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "admin_movie_detail.html",
+        movie=movie,
+        theatres=theatres,
+        showtimes=showtimes,
+        city=city
+    )
+
+@app.route("/admin/theatre/add", methods=["POST"])
+def add_theatre():
+    name = request.form["name"]
+    city = request.form["city"]
+
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO theatres (name, city) VALUES (?, ?)",
+        (name.strip(), city.lower())
+    )
+    conn.commit()
+    conn.close()
+
+    return redirect(request.referrer)
+
+@app.route("/admin/showtime/add", methods=["POST"])
+def add_showtime():
+    movie_id = request.form["movie_id"]
+    theatre_id = request.form["theatre_id"]
+    show_time = request.form["show_time"]
+    format_ = request.form["format"]
+    date = request.form["date"]
+
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO showtimes
+        (movie_id, theatre_id, show_time, format, date)
+        VALUES (?, ?, ?, ?, ?)
+    """, (movie_id, theatre_id, show_time, format_, date))
+
+    conn.commit()
+    conn.close()
+
+    return redirect(request.referrer)
+
+@app.route("/admin/showtime/delete/<int:id>")
+def delete_showtime(id):
+    conn = get_db()
+    conn.execute("DELETE FROM showtimes WHERE showtime_id=?", (id,))
+    conn.commit()
+    conn.close()
+
+    return redirect(request.referrer)
+
+@app.route("/admin/movie/update_image/<int:movie_id>", methods=["POST"])
+def update_movie_image(movie_id):
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    file = request.files.get("image")
+
+    if file and file.filename:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        file.save(filepath)
+
+        image_path = f"posters/{filename}"
+
+        conn = get_db()
+        old = conn.execute(
+            "SELECT image FROM movies WHERE movie_id=?",
+            (movie_id,)
+        ).fetchone()
+
+        if old and old["image"]:
+            old_path = os.path.join("static", old["image"])
+            if os.path.exists(old_path):
+                os.remove(old_path)
+
+        conn.execute(
+            "UPDATE movies SET image=? WHERE movie_id=?",
+            (image_path, movie_id)
+        )
+
+        conn.commit()
+        conn.close()
+
+    return redirect(request.referrer)
+
+
+
+
 
 if __name__ == "__main__":
     # app.run(host="192.168.58.245", port=5000, debug=True)

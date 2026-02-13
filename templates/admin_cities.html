@@ -1,0 +1,18 @@
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_cities.css') }}">
+
+
+<div class="city-container">
+<h2>Select City</h2>
+<ul class="cities">
+{% for c in cities %}
+    <li class="list">
+        <a href="{{ url_for('admin_city_movies', city=c.city) }}">
+            {{ c.city|title }}
+        </a>
+    </li>
+{% endfor %}
+</ul>
+<a href="{{ url_for('admin_login') }}" class="logout-btn">Logout</a>
+
+</div>

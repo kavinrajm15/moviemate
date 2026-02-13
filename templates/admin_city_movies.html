@@ -1,0 +1,25 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_city_movies.css') }}">
+
+<h2>Movies in {{ city|title }}</h2>
+
+<form method="GET">
+    <input type="text" name="search" placeholder="Search movie" value="{{ search }}">
+    <button type="submit" class="submit-btn">Search</button>
+</form>
+
+<div class="movies-grid">
+{% for movie in movies %}
+    <div class="movie-card">
+        <a href="{{ url_for('admin_movie_detail', movie_id=movie.movie_id, city=city) }}" class="movie-link">
+            
+            <img src="{{ url_for('static', filename=movie.image) }}"
+                 alt="{{ movie.title }}">
+
+            <p>{{ movie.title }}</p>
+        </a>
+    </div>
+{% endfor %}
+</div>
+
+<br><br>
+<a href="{{ url_for('admin_cities') }}" class="back-btn">Back to Cities</a>

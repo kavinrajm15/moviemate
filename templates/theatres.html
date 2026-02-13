@@ -23,14 +23,12 @@
                 ] | select | join(' | ')
             }}
         </h4>
-
-        <!-- <a href="javascript:history.back()" class="back-link">«</a> -->
     </div>
 </div>
 
 
 <div class="dates">
-    <a href="javascript:history.back()" class="back-link">«</a>
+    <a href="/movies?city={{ city }}" class="back-link">«</a>
   {% for d in dates %}
     <a href="{{ url_for('theatres',
         movie_id=movie_id,
