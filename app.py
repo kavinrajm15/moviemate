@@ -1,15 +1,14 @@
 from flask import Flask, render_template, request,redirect, url_for, session
 import sqlite3
 from datetime import datetime, timedelta
+
 import requests
-#<
 import os
 from werkzeug.utils import secure_filename
-#>
 
 app = Flask(__name__)
 
-#<
+
 app.secret_key = "qwerty"
 UPLOAD_FOLDER = os.path.join("static", "posters")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
@@ -21,7 +20,7 @@ def allowed_file(filename):
     return "." in filename and \
            filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-#>
+
 
 DB = "movies.db"
 TODAY = datetime.now().strftime("%Y%m%d")
@@ -31,12 +30,12 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-#<
+
 def allowed_file(filename):
     return "." in filename and \
            filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-#>
+
 def normalize_date(d):
     if not d:
         return TODAY
@@ -184,8 +183,6 @@ def theatres():
     date = normalize_date(request.args.get("date"))
 
     conn = get_db()
-
-    # movie details
     movie = conn.execute("""
         SELECT title, duration, genres, certificate,image
         FROM movies
@@ -216,9 +213,7 @@ def theatres():
             "month": dt.strftime("%b")
         })
 
-
     rows = conn.execute("""
-    # showtimes for selected date
         SELECT
             t.name,
             s.show_time,
@@ -463,12 +458,16 @@ def update_movie_image(movie_id):
 
     if file and file.filename:
         filename = secure_filename(file.filename)
+
+        # Save new image
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
         image_path = f"posters/{filename}"
 
         conn = get_db()
+
+        # Get old image
         old = conn.execute(
             "SELECT image FROM movies WHERE movie_id=?",
             (movie_id,)
