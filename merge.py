@@ -1,26 +1,22 @@
 import json
 import sqlite3
-from datetime import datetime
+import os
 from pathlib import Path
 
 DB = "movies.db"
+POSTER_FOLDER = os.path.join("static", "posters")
 
 JSON_FILES = [
     "tamilnadu_bms.json",
     "tamilnadu_ticketnew.json"
 ]
 
-# DB SETUP
 def init_db():
     conn = sqlite3.connect(DB)
     cur = conn.cursor()
 
     cur.executescript("""
-    DROP TABLE IF EXISTS showtimes;
-    DROP TABLE IF EXISTS theatres;
-    DROP TABLE IF EXISTS movies;
-
-    CREATE TABLE movies (
+    CREATE TABLE IF NOT EXISTS movies (
         movie_id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT UNIQUE,
         image TEXT,
@@ -29,14 +25,14 @@ def init_db():
         certificate TEXT
     );
 
-    CREATE TABLE theatres (
+    CREATE TABLE IF NOT EXISTS theatres (
         theatre_id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         city TEXT,
         UNIQUE(name, city)
     );
 
-    CREATE TABLE showtimes (
+    CREATE TABLE IF NOT EXISTS showtimes (
         showtime_id INTEGER PRIMARY KEY AUTOINCREMENT,
         movie_id INTEGER,
         theatre_id INTEGER,
@@ -50,64 +46,68 @@ def init_db():
     conn.commit()
     return conn
 
-# HELPERS
 def load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def get_or_create_movie(cur, m):
+def upsert_movie(cur, m):
+    title = m["title"].strip()
+
     cur.execute("""
-        INSERT OR IGNORE INTO movies
-        (title, image, duration, genres, certificate)
+        INSERT INTO movies (title, image, duration, genres, certificate)
         VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(title) DO UPDATE SET
+            image=excluded.image,
+            duration=excluded.duration,
+            genres=excluded.genres,
+            certificate=excluded.certificate
     """, (
-        m["title"].strip(),
+        title,
         m.get("image"),
         m.get("details", {}).get("duration"),
         ",".join(m.get("details", {}).get("genres", [])),
         m.get("details", {}).get("certificate")
     ))
 
-    cur.execute("SELECT movie_id FROM movies WHERE title = ?", (m["title"].strip(),))
-    return cur.fetchone()[0]
+    cur.execute("SELECT movie_id FROM movies WHERE title=?", (title,))
+    return cur.fetchone()[0], title
 
 
-def get_or_create_theatre(cur, name, city):
+def upsert_theatre(cur, name, city):
+    name = name.strip()
+    city = city.lower().strip()
+
     cur.execute("""
-        INSERT OR IGNORE INTO theatres (name, city)
+        INSERT INTO theatres (name, city)
         VALUES (?, ?)
-    """, (name.strip(), city.lower()))
+        ON CONFLICT(name, city) DO NOTHING
+    """, (name, city))
 
     cur.execute("""
         SELECT theatre_id FROM theatres
-        WHERE name = ? AND city = ?
-    """, (name.strip(), city.lower()))
+        WHERE name=? AND city=?
+    """, (name, city))
 
     return cur.fetchone()[0]
 
-# MERGE LOGIC WITH DATES
-def merge_json(conn, data):
+def merge_json(conn, data, valid_titles):
     cur = conn.cursor()
 
     for city, city_data in data.get("cities", {}).items():
         city = city.lower().strip()
 
         for movie in city_data.get("movies", []):
-            movie_id = get_or_create_movie(cur, movie)
+            movie_id, title = upsert_movie(cur, movie)
+            valid_titles.add(title)
+
+            # Remove old showtimes for this movie
 
             for theatre in movie.get("theatres", []):
-                theatre_id = get_or_create_theatre(cur, theatre["name"], city)
+                theatre_id = upsert_theatre(cur, theatre["name"], city)
 
-                seen = set()
-                # Loop over all dates for this theatre
                 for show_date, show_list in theatre.get("dates", {}).items():
                     for st in show_list:
-                        key = (st["time"], st.get("format"), show_date)
-                        if key in seen:
-                            continue
-                        seen.add(key)
-
                         cur.execute("""
                             INSERT OR IGNORE INTO showtimes
                             (movie_id, theatre_id, show_time, format, date)
@@ -122,17 +122,62 @@ def merge_json(conn, data):
 
     conn.commit()
 
+def remove_old_movies(conn, valid_titles):
+    print("Checking for removed movies...")
+
+    cur = conn.cursor()
+    cur.execute("SELECT movie_id, title FROM movies")
+    rows = cur.fetchall()
+
+    for movie_id, title in rows:
+        if title not in valid_titles:
+            print("Removing old movie:", title)
+
+            cur.execute("DELETE FROM showtimes WHERE movie_id=?", (movie_id,))
+            cur.execute("DELETE FROM movies WHERE movie_id=?", (movie_id,))
+
+    conn.commit()
+
+
+def cleanup_unused_images(conn):
+    print("Cleaning unused images...")
+
+    if not os.path.exists(POSTER_FOLDER):
+        return
+
+    cur = conn.cursor()
+    cur.execute("SELECT image FROM movies")
+    rows = cur.fetchall()
+
+    used_images = set()
+    for r in rows:
+        if r[0]:
+            used_images.add(os.path.basename(r[0]))
+
+    for filename in os.listdir(POSTER_FOLDER):
+        path = os.path.join(POSTER_FOLDER, filename)
+
+        if os.path.isfile(path) and filename not in used_images:
+            os.remove(path)
+            print("Deleted unused image:", filename)
+
+    print("Image cleanup complete.")
 
 if __name__ == "__main__":
-    print(" Rebuilding movies.db")
+    print("Updating movies.db incrementally...")
+
     conn = init_db()
+    valid_titles = set()
 
     for jf in JSON_FILES:
         if Path(jf).exists():
             print(f"Merging {jf}")
-            merge_json(conn, load_json(jf))
+            merge_json(conn, load_json(jf), valid_titles)
         else:
-            print(f" Missing file: {jf}")
+            print(f"Missing file: {jf}")
+
+    remove_old_movies(conn, valid_titles)
+    cleanup_unused_images(conn)
 
     conn.close()
-    print("Merge complete. movies.db ready ")
+    print("Database update complete.")
