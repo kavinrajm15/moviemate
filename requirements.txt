@@ -5,4 +5,4 @@ beautifulsoup4
 lxml
 playwright
 gunicorn
-psycopg2-binary
+

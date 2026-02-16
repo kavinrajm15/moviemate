@@ -1,0 +1,27 @@
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_add_movie.css') }}">
+
+<div class="form-container">
+    <h2>Add New Movie ({{ city|title }})</h2>
+
+    <form method="POST" action="{{ url_for('create_movie', city=city) }}" enctype="multipart/form-data">
+
+        <input type="hidden" name="city" value="{{ city }}">
+
+        <input type="text" name="title" placeholder="Movie Title" required>
+
+        <input type="text" name="duration" placeholder="2h 30m">
+
+        <input type="text" name="genres" placeholder="Action, Thriller">
+
+        <input type="text" name="certificate" placeholder="U/A">
+
+        <input type="file" name="image" accept="image/*" required>
+
+        <button type="submit">Create Movie</button>
+    </form>
+
+    <a href="{{ url_for('admin_city_movies', city=city) }}" class="back-link">
+        Back
+    </a>
+</div>

@@ -1,57 +1,97 @@
-<h2>{{ movie.title }}</h2>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_movie_detail.css') }}">
 
-<h3>Add Theatre</h3>
-<form method="POST" action="{{ url_for('add_theatre') }}">
-    <input type="hidden" name="city" value="{{ city }}">
-    <input type="text" name="name" placeholder="Theatre Name" required>
-    <button type="submit">Add Theatre</button>
-</form>
+<h2 class="page-title">{{ movie.title }}</h2>
 
-<hr>
+<div class="admin-container">
 
-<h3>Add Showtime</h3>
-<form method="POST" action="{{ url_for('add_showtime') }}">
-    <input type="hidden" name="movie_id" value="{{ movie.movie_id }}">
+    <div class="top-row">
+        <div class="poster-box">
+            <h3>Current Poster</h3>
+            <img src="{{ url_for('static', filename=movie.image) }}">
+        </div>
 
-    <select name="theatre_id" required>
-        {% for t in theatres %}
-            <option value="{{ t.theatre_id }}">{{ t.name }}</option>
-        {% endfor %}
-    </select>
+        <div class="change-box">
+            <h3>Change Poster</h3>
+            <form method="POST"
+                  action="{{ url_for('update_movie_image', movie_id=movie.movie_id) }}"
+                  enctype="multipart/form-data">
 
-    <input type="text" name="show_time" placeholder="10:30 AM">
-    <input type="text" name="format" placeholder="2D/3D/IMAX">
-    <input type="date" name="date">
+                <input type="file" name="image" required>
+                <button type="submit">Upload New Poster</button>
+            </form>
+        </div>
 
-    <button type="submit">Add Showtime</button>
-</form>
+        <div class="theatre-box">
+            <h3>Add Theatre</h3>
+            <form method="POST" action="{{ url_for('add_theatre') }}">
+                <input type="hidden" name="city" value="{{ city }}">
+                <input type="text" name="name" placeholder="Theatre Name" required>
+                <button type="submit">Add Theatre</button>
+            </form>
+        </div>
+    </div>
 
-<hr>
+    <div class="showtime-box">
+        <h3>Add Showtime</h3>
+        <form method="POST" action="{{ url_for('add_showtime') }}">
+            <input type="hidden" name="movie_id" value="{{ movie.movie_id }}">
 
-<h3>Existing Showtimes</h3>
-<table border="1">
-<tr>
-    <th>Theatre</th>
-    <th>Time</th>
-    <th>Format</th>
-    <th>Date</th>
-    <th>Delete</th>
-</tr>
+            <select name="theatre_id" required>
+                {% for t in theatres %}
+                    <option value="{{ t.theatre_id }}">{{ t.name }}</option>
+                {% endfor %}
+            </select>
 
-{% for s in showtimes %}
-<tr>
-    <td>{{ s.name }}</td>
-    <td>{{ s.show_time }}</td>
-    <td>{{ s.format }}</td>
-    <td>{{ s.date }}</td>
-    <td>
-        <a href="{{ url_for('delete_showtime', id=s.showtime_id) }}">
-            Delete
-        </a>
-    </td>
-</tr>
-{% endfor %}
-</table>
+            <input type="text" name="show_time" placeholder="10:30 AM">
+            <input type="text" name="format" placeholder="2D / 3D / IMAX">
+            <input type="date" name="date">
 
-<br>
-<a href="{{ url_for('admin_city_movies', city=city) }}">Back to Movies</a>
+            <button type="submit">Add Showtime</button>
+        </form>
+    </div>
+
+    <div class="table-section">
+        <h3>Existing Showtimes</h3>
+        <div class="table-wrapper">
+            <table>
+                <tr>
+                    <th>Theatre</th>
+                    <th>Time</th>
+                    <th>Format</th>
+                    <th>Date</th>
+                    <th>Delete</th>
+                </tr>
+
+                {% for s in showtimes %}
+                <tr>
+                    <td>{{ s.name }}</td>
+                    <td>{{ s.show_time }}</td>
+                    <td>{{ s.format }}</td>
+                    <td>{{ s.date }}</td>
+                    <td>
+                        <a href="{{ url_for('delete_showtime', id=s.showtime_id) }}">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+    <div class="delete-movie-box">
+        <form method="POST"
+            action="{{ url_for('delete_movie', movie_id=movie.movie_id) }}"
+            onsubmit="return confirm('Are you sure you want to permanently delete this movie and all its showtimes?');">
+
+            <input type="hidden" name="city" value="{{ city }}">
+
+            <button type="submit" class="delete-movie-btn">
+                Delete This Movie
+            </button>
+        </form>
+    </div>
+
+    <a href="{{ url_for('admin_city_movies', city=city) }}" class="back-btn">
+        Back to Movies
+    </a>
+
+</div>

@@ -53,6 +53,40 @@ form input {
     color: white;
 }
 
+.logout-btn {
+    margin-top: 20px;
+    text-decoration: none;
+    background-color: #ffffff;
+    color: #f85e00;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    transition: 0.3s ease;
+}
+
+.logout-btn:hover {
+    background-color: #ff1b6b;
+    color: white;
+}
+
+.add_movie{
+    background-color:white;
+    color: #f85e00;
+    text-decoration: none;
+    padding: 8px 12px;
+    border:none;
+    border-radius:6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.add_movie:hover {
+    background-color: #ff1b6b;
+    color: white;
+}
+
 .movies {
     list-style: none;
     margin-top: 20px;

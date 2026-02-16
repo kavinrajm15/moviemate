@@ -13,15 +13,18 @@ body {
 }
 
 .logout-btn {
-    margin-top: 20px;
+    position: fixed;
+    top: 70px;  
+    right: 15px;
     text-decoration: none;
     background-color: #ffffff;
     color: #f85e00;
-    padding: 10px 20px;
+    padding: 8px 10px;
     border-radius: 6px;
     font-size: 14px;
     font-weight: bold;
     transition: 0.3s ease;
+    z-index: 1000;   
 }
 
 .logout-btn:hover {

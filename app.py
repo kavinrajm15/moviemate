@@ -341,18 +341,19 @@ def admin_city_movies(city):
         cur.execute("""
             SELECT DISTINCT m.movie_id, m.title, m.image
             FROM movies m
-            JOIN showtimes s ON m.movie_id = s.movie_id
-            JOIN theatres t ON s.theatre_id = t.theatre_id
-            WHERE t.city = ? AND m.title LIKE ?
+            LEFT JOIN showtimes s ON m.movie_id = s.movie_id
+            LEFT JOIN theatres t ON s.theatre_id = t.theatre_id
+            WHERE (t.city = ? OR s.movie_id IS NULL)
+              AND m.title LIKE ?
             ORDER BY m.title
         """, (city.lower(), f"%{search}%"))
     else:
         cur.execute("""
             SELECT DISTINCT m.movie_id, m.title, m.image
             FROM movies m
-            JOIN showtimes s ON m.movie_id = s.movie_id
-            JOIN theatres t ON s.theatre_id = t.theatre_id
-            WHERE t.city = ?
+            LEFT JOIN showtimes s ON m.movie_id = s.movie_id
+            LEFT JOIN theatres t ON s.theatre_id = t.theatre_id
+            WHERE t.city = ? OR s.movie_id IS NULL
             ORDER BY m.title
         """, (city.lower(),))
 
@@ -393,7 +394,7 @@ def admin_movie_detail(movie_id):
         JOIN theatres t ON s.theatre_id = t.theatre_id
         WHERE s.movie_id=? AND t.city=?
         ORDER BY s.date, t.name
-    """, (movie_id, city.lower())).fetchall()
+    """, (movie_id, city.lower())).fetchall()   
 
     conn.close()
 
@@ -404,6 +405,43 @@ def admin_movie_detail(movie_id):
         showtimes=showtimes,
         city=city
     )
+
+@app.route("/admin/movie/delete/<int:movie_id>", methods=["POST"])
+def delete_movie(movie_id):
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    city = request.form.get("city")
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Get image path
+    cur.execute("SELECT image FROM movies WHERE movie_id = ?", (movie_id,))
+    movie = cur.fetchone()
+
+    if movie:
+        image_path = movie[0]
+
+        # Delete related showtimes
+        cur.execute("DELETE FROM showtimes WHERE movie_id = ?", (movie_id,))
+
+        # Delete movie
+        cur.execute("DELETE FROM movies WHERE movie_id = ?", (movie_id,))
+
+        conn.commit()
+
+        # Delete poster file
+        if image_path:
+            full_path = os.path.join("static", image_path)
+            if os.path.exists(full_path):
+                os.remove(full_path)
+
+    conn.close()
+
+    # Redirect back to that city's movie list
+    return redirect(url_for("admin_city_movies", city=city))
+
 
 @app.route("/admin/theatre/add", methods=["POST"])
 def add_theatre():
@@ -426,7 +464,7 @@ def add_showtime():
     theatre_id = request.form["theatre_id"]
     show_time = request.form["show_time"]
     format_ = request.form["format"]
-    date = request.form["date"]
+    date = request.form["date"].replace("-", "")
 
     conn = get_db()
     conn.execute("""
@@ -459,7 +497,6 @@ def update_movie_image(movie_id):
     if file and file.filename:
         filename = secure_filename(file.filename)
 
-        # Save new image
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(filepath)
 
@@ -467,7 +504,6 @@ def update_movie_image(movie_id):
 
         conn = get_db()
 
-        # Get old image
         old = conn.execute(
             "SELECT image FROM movies WHERE movie_id=?",
             (movie_id,)
@@ -488,8 +524,46 @@ def update_movie_image(movie_id):
 
     return redirect(request.referrer)
 
+@app.route("/admin/movie/add/<city>")
+def add_movie_page(city):
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
 
+    return render_template("admin_add_movie.html", city=city)
 
+@app.route("/admin/<city>/movie/create", methods=["POST"])
+def create_movie(city):
+    if not session.get("admin"):
+        return redirect(url_for("admin_login"))
+
+    title = request.form["title"].strip()
+    duration = request.form["duration"]
+    genres = request.form["genres"]
+    certificate = request.form["certificate"]
+
+    file = request.files.get("image")
+    image_path = None
+
+    if file and file.filename and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        file.save(filepath)
+        image_path = f"posters/{filename}"
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO movies (title, image, duration, genres, certificate)
+        VALUES (?, ?, ?, ?, ?)
+    """, (title, image_path, duration, genres, certificate))
+
+    movie_id = cursor.lastrowid
+
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("admin_movie_detail", movie_id=movie_id, city=city))
 
 
 if __name__ == "__main__":

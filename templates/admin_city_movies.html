@@ -5,7 +5,12 @@
 <form method="GET">
     <input type="text" name="search" placeholder="Search movie" value="{{ search }}">
     <button type="submit" class="submit-btn">Search</button>
+    <a href="{{ url_for('admin_login') }}" class="logout-btn">Logout</a>
 </form>
+<a href="{{ url_for('add_movie_page', city=city) }}" class="add_movie">
+   Add New Movie
+</a>
+
 
 <div class="movies-grid">
 {% for movie in movies %}
