@@ -101,8 +101,6 @@ def merge_json(conn, data, valid_titles):
             movie_id, title = upsert_movie(cur, movie)
             valid_titles.add(title)
 
-            # Remove old showtimes for this movie
-
             for theatre in movie.get("theatres", []):
                 theatre_id = upsert_theatre(cur, theatre["name"], city)
 
